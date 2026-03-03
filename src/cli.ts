@@ -15,22 +15,24 @@ import {
   postCharge,
   clearAmount,
 } from "./operations.js";
+import { getSupportedCurrencies } from "./currency.js";
 
 const program = new Command();
 
 program
   .name("ledger")
-  .description("In-memory dual-entry ledger CLI")
-  .version("1.0.0");
+  .description("In-memory dual-entry ledger CLI with multi-currency support")
+  .version("2.0.0");
 
 program
   .command("create-account")
   .description("Create a new charge account with pending and posted books")
   .argument("<name>", "Name for the charge account")
-  .action((name: string) => {
+  .option("--currency <code>", "Currency for the account", "USD")
+  .action((name: string, opts: { currency: string }) => {
     ensureControllerAccount();
-    const { account } = createChargeAccount(name);
-    console.log(`Created charge account "${name}" (${account.id})`);
+    const { account } = createChargeAccount(name, opts.currency);
+    console.log(`Created charge account "${name}" [${opts.currency}] (${account.id})`);
   });
 
 program
@@ -38,11 +40,12 @@ program
   .description("Capture a pending charge (cash -> pending)")
   .argument("<accountId>", "Charge account ID")
   .argument("<amount>", "Amount to capture")
-  .action((accountId: string, amountStr: string) => {
+  .option("--currency <code>", "Transaction currency")
+  .action((accountId: string, amountStr: string, opts: { currency?: string }) => {
     const amount = parseFloat(amountStr);
-    const [debit, credit] = capturePendingCharge(accountId, amount);
+    const [debit, credit] = capturePendingCharge(accountId, amount, opts.currency);
     console.log(
-      `Captured ${amount} on account ${accountId}`,
+      `Captured ${amount} ${opts.currency ?? "USD"} on account ${accountId}`,
     );
     console.log(`  Debit entry:  ${debit.id}`);
     console.log(`  Credit entry: ${credit.id}`);
@@ -53,11 +56,16 @@ program
   .description("Reverse a pending charge (pending -> cash)")
   .argument("<accountId>", "Charge account ID")
   .argument("<amount>", "Amount to reverse")
-  .action((accountId: string, amountStr: string) => {
+  .option("--currency <code>", "Transaction currency")
+  .action((accountId: string, amountStr: string, opts: { currency?: string }) => {
     const amount = parseFloat(amountStr);
-    const [debit, credit] = reversePendingCharge(accountId, amount);
+    const [debit, credit] = reversePendingCharge({
+      chargeAccountId: accountId,
+      amount,
+      currency: opts.currency,
+    });
     console.log(
-      `Reversed ${amount} on account ${accountId}`,
+      `Reversed ${amount} ${opts.currency ?? "USD"} on account ${accountId}`,
     );
     console.log(`  Debit entry:  ${debit.id}`);
     console.log(`  Credit entry: ${credit.id}`);
@@ -68,11 +76,12 @@ program
   .description("Post a charge (pending -> posted)")
   .argument("<accountId>", "Charge account ID")
   .argument("<amount>", "Amount to post")
-  .action((accountId: string, amountStr: string) => {
+  .option("--currency <code>", "Transaction currency")
+  .action((accountId: string, amountStr: string, opts: { currency?: string }) => {
     const amount = parseFloat(amountStr);
-    const [debit, credit] = postCharge(accountId, amount);
+    const [debit, credit] = postCharge(accountId, amount, opts.currency);
     console.log(
-      `Posted ${amount} on account ${accountId}`,
+      `Posted ${amount} ${opts.currency ?? "USD"} on account ${accountId}`,
     );
     console.log(`  Debit entry:  ${debit.id}`);
     console.log(`  Credit entry: ${credit.id}`);
@@ -83,14 +92,26 @@ program
   .description("Clear a posted amount (posted -> cash)")
   .argument("<accountId>", "Charge account ID")
   .argument("<amount>", "Amount to clear")
-  .action((accountId: string, amountStr: string) => {
+  .option("--currency <code>", "Transaction currency")
+  .action((accountId: string, amountStr: string, opts: { currency?: string }) => {
     const amount = parseFloat(amountStr);
-    const [debit, credit] = clearAmount(accountId, amount);
+    const [debit, credit] = clearAmount({
+      chargeAccountId: accountId,
+      amount,
+      currency: opts.currency,
+    });
     console.log(
-      `Cleared ${amount} on account ${accountId}`,
+      `Cleared ${amount} ${opts.currency ?? "USD"} on account ${accountId}`,
     );
     console.log(`  Debit entry:  ${debit.id}`);
     console.log(`  Credit entry: ${credit.id}`);
+  });
+
+program
+  .command("currencies")
+  .description("List supported currencies")
+  .action(() => {
+    console.log("Supported currencies:", getSupportedCurrencies().join(", "));
   });
 
 program
@@ -106,7 +127,7 @@ program
         const balance = getBookBalance(book.id);
         const entryCount = store.entriesForBook(book.id).length;
         console.log(
-          `  ${book.name}: balance=${balance}, entries=${entryCount}`,
+          `  ${book.name} [${book.currency}]: balance=${balance}, entries=${entryCount}`,
         );
       }
     }

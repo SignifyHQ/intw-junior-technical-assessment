@@ -30,10 +30,11 @@ function requireChargeAccount(chargeAccountId: string): void {
 export function capturePendingCharge(
   chargeAccountId: string,
   amount: number,
+  currency?: string,
 ): [Entry, Entry] {
   requireChargeAccount(chargeAccountId);
   const pendingBook = getBookByName(chargeAccountId, "pending");
-  return createEntryPair(pendingBook.id, getCashBookId(), amount);
+  return createEntryPair(pendingBook.id, getCashBookId(), amount, currency);
 }
 
 /**
@@ -43,22 +44,23 @@ export function capturePendingCharge(
  *
  * Dual entries: debit cash, credit pending.
  */
-export function reversePendingCharge(
-  chargeAccountId: string,
-  amount: number,
-): [Entry, Entry] {
-  requireChargeAccount(chargeAccountId);
-  const pendingBook = getBookByName(chargeAccountId, "pending");
+export const reversePendingCharge = (opts: {
+  chargeAccountId: string;
+  amount: number;
+  currency?: string;
+}): [Entry, Entry] => {
+  requireChargeAccount(opts.chargeAccountId);
+  const pendingBook = getBookByName(opts.chargeAccountId, "pending");
 
   const pendingBalance = getBookBalance(pendingBook.id);
-  if (pendingBalance < amount) {
+  if (pendingBalance < opts.amount) {
     throw new Error(
-      `Insufficient pending balance: have ${pendingBalance}, need ${amount}`,
+      `Insufficient pending balance: have ${pendingBalance}, need ${opts.amount}`,
     );
   }
 
-  return createEntryPair(getCashBookId(), pendingBook.id, amount);
-}
+  return createEntryPair(getCashBookId(), pendingBook.id, opts.amount, opts.currency);
+};
 
 /**
  * Post a charge: finalizes a pending amount by moving it from the
@@ -70,6 +72,7 @@ export function reversePendingCharge(
 export function postCharge(
   chargeAccountId: string,
   amount: number,
+  currency?: string,
 ): [Entry, Entry] {
   requireChargeAccount(chargeAccountId);
   const pendingBook = getBookByName(chargeAccountId, "pending");
@@ -82,7 +85,7 @@ export function postCharge(
     );
   }
 
-  return createEntryPair(postedBook.id, pendingBook.id, amount);
+  return createEntryPair(postedBook.id, pendingBook.id, amount, currency);
 }
 
 /**
@@ -92,19 +95,20 @@ export function postCharge(
  *
  * Dual entries: debit cash, credit posted.
  */
-export function clearAmount(
-  chargeAccountId: string,
-  amount: number,
-): [Entry, Entry] {
-  requireChargeAccount(chargeAccountId);
-  const postedBook = getBookByName(chargeAccountId, "posted");
+export const clearAmount = (opts: {
+  chargeAccountId: string;
+  amount: number;
+  currency?: string;
+}): [Entry, Entry] => {
+  requireChargeAccount(opts.chargeAccountId);
+  const postedBook = getBookByName(opts.chargeAccountId, "posted");
 
   const postedBalance = getBookBalance(postedBook.id);
-  if (postedBalance < amount) {
+  if (postedBalance < opts.amount) {
     throw new Error(
-      `Insufficient posted balance: have ${postedBalance}, need ${amount}`,
+      `Insufficient posted balance: have ${postedBalance}, need ${opts.amount}`,
     );
   }
 
-  return createEntryPair(getCashBookId(), postedBook.id, amount);
-}
+  return createEntryPair(getCashBookId(), postedBook.id, opts.amount, opts.currency);
+};

@@ -18,11 +18,13 @@ export interface Book {
   id: string;
   name: string;
   accountId: string;
+  currency: string;
 }
 
 export interface Entry {
   id: string;
   amount: number;
+  currency: string;
   direction: EntryDirection;
   bookId: string;
   correspondingEntryId: string;

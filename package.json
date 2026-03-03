@@ -1,0 +1,25 @@
+{
+  "name": "intw-junior-technical-assessment",
+  "version": "1.0.0",
+  "description": "In-memory dual-entry ledger",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "ledger": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "tsx src/cli.ts",
+    "ledger": "tsx src/cli.ts"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "commander": "^13.1.0"
+  }
+}

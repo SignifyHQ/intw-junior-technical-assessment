@@ -16,4 +16,11 @@ export {
   clearAmount,
 } from "./operations.js";
 
+export {
+  convertAmount,
+  getSupportedCurrencies,
+  getBookCurrency,
+  isValidCurrency,
+} from "./currency.js";
+
 export { store } from "./store.js";

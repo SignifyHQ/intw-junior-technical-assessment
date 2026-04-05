@@ -140,3 +140,4 @@ vite.config.ts.timestamp-*
 
 # Ledger data file
 .ledger-data.json
+.DS_Store

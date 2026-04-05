@@ -8,12 +8,15 @@ import {
   ensureControllerAccount,
   getBookByName,
   getBookBalance,
+  toCents,
+  toDollars,
 } from "./ledger.js";
 import {
   capturePendingCharge,
   reversePendingCharge,
   postCharge,
   clearAmount,
+  refundPostedCharge,
 } from "./operations.js";
 
 const program = new Command();
@@ -39,11 +42,9 @@ program
   .argument("<accountId>", "Charge account ID")
   .argument("<amount>", "Amount to capture")
   .action((accountId: string, amountStr: string) => {
-    const amount = parseFloat(amountStr);
+    const amount = toCents(parseFloat(amountStr));
     const [debit, credit] = capturePendingCharge(accountId, amount);
-    console.log(
-      `Captured ${amount} on account ${accountId}`,
-    );
+    console.log(`Captured $${toDollars(amount)} on account ${accountId}`);
     console.log(`  Debit entry:  ${debit.id}`);
     console.log(`  Credit entry: ${credit.id}`);
   });
@@ -54,11 +55,9 @@ program
   .argument("<accountId>", "Charge account ID")
   .argument("<amount>", "Amount to reverse")
   .action((accountId: string, amountStr: string) => {
-    const amount = parseFloat(amountStr);
+    const amount = toCents(parseFloat(amountStr));
     const [debit, credit] = reversePendingCharge(accountId, amount);
-    console.log(
-      `Reversed ${amount} on account ${accountId}`,
-    );
+    console.log(`Reversed $${toDollars(amount)} on account ${accountId}`);
     console.log(`  Debit entry:  ${debit.id}`);
     console.log(`  Credit entry: ${credit.id}`);
   });
@@ -69,11 +68,9 @@ program
   .argument("<accountId>", "Charge account ID")
   .argument("<amount>", "Amount to post")
   .action((accountId: string, amountStr: string) => {
-    const amount = parseFloat(amountStr);
+    const amount = toCents(parseFloat(amountStr));
     const [debit, credit] = postCharge(accountId, amount);
-    console.log(
-      `Posted ${amount} on account ${accountId}`,
-    );
+    console.log(`Posted $${toDollars(amount)} on account ${accountId}`);
     console.log(`  Debit entry:  ${debit.id}`);
     console.log(`  Credit entry: ${credit.id}`);
   });
@@ -84,11 +81,25 @@ program
   .argument("<accountId>", "Charge account ID")
   .argument("<amount>", "Amount to clear")
   .action((accountId: string, amountStr: string) => {
-    const amount = parseFloat(amountStr);
+    const amount = toCents(parseFloat(amountStr));
     const [debit, credit] = clearAmount(accountId, amount);
-    console.log(
-      `Cleared ${amount} on account ${accountId}`,
-    );
+    console.log(`Cleared $${toDollars(amount)} on account ${accountId}`);
+    console.log(`  Debit entry:  ${debit.id}`);
+    console.log(`  Credit entry: ${credit.id}`);
+  });
+
+program
+  .command("refund")
+  .description("Refund a posted charge (posted -> cash)")
+  .argument("<accountId>", "Charge account ID")
+  .argument("<amount>", "Amount to refund")
+  .argument("<originalEntryId>", "Debit entry ID from the original postCharge call")
+  .action((accountId: string, amountStr: string, originalEntryId: string) => {
+    const amount = toCents(parseFloat(amountStr));
+    const [debit, credit] = refundPostedCharge(accountId, amount, originalEntryId);
+    console.log(`Refunded $${toDollars(amount)} on account ${accountId}`);
+    console.log(`  Refund ID:    ${debit.refundId}`);
+    console.log(`  Original:     ${originalEntryId}`);
     console.log(`  Debit entry:  ${debit.id}`);
     console.log(`  Credit entry: ${credit.id}`);
   });
@@ -106,7 +117,7 @@ program
         const balance = getBookBalance(book.id);
         const entryCount = store.entriesForBook(book.id).length;
         console.log(
-          `  ${book.name}: balance=${balance}, entries=${entryCount}`,
+          `  ${book.name}: balance=$${toDollars(balance)}, entries=${entryCount}`,
         );
       }
     }

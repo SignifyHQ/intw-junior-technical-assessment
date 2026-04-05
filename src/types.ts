@@ -27,6 +27,8 @@ export interface Entry {
   bookId: string;
   correspondingEntryId: string;
   createdAt: string;
+  refundId?: string;  // groups the two entries of a single refund pair
+  refundOf?: string;  // points to the original posted debit entry being reversed
 }
 
 // Serializable snapshot of the entire ledger state for disk persistence

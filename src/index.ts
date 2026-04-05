@@ -14,6 +14,7 @@ export {
   reversePendingCharge,
   postCharge,
   clearAmount,
+  refundPostedCharge,
 } from "./operations.js";
 
 export { store } from "./store.js";

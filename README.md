@@ -21,6 +21,7 @@ An in-memory, single-currency dual-entry ledger built in TypeScript. Every finan
 | `reversePendingCharge` | pending → cash | Void an authorization before settlement |
 | `postCharge` | pending → posted | Settle a held charge |
 | `clearAmount` | posted → cash | Disburse / clear settled funds |
+| `refundPostedCharge` | posted → cash | Refund a settled charge (full or partial) |
 
 ## Setup
 
@@ -47,6 +48,10 @@ npm run ledger -- post <accountId> 50.25
 
 # Clear a posted amount (move from posted to cash)
 npm run ledger -- clear <accountId> 50.25
+
+# Refund a posted charge (full or partial)
+# originalEntryId is the debit entry ID printed by the `post` command
+npm run ledger -- refund <accountId> 50.25 <originalEntryId>
 
 # View all account balances
 npm run ledger -- status
@@ -79,6 +84,31 @@ postCharge(account.id, 100.50);
 
 // Disburse
 clearAmount(account.id, 100.50);
+```
+
+## Test Runner
+
+`tests/runner.py` is a Python script that drives the CLI through end-to-end scenarios. It requires no dependencies beyond the standard library — just Python 3 and a built project.
+
+```bash
+# Run all scenarios against a clean ledger
+rm -f .ledger-data.json && python3 tests/runner.py
+```
+
+Four scenarios are included:
+
+| Scenario | What it tests |
+|---|---|
+| C | Full refund of a posted charge — all books return to zero |
+| D | Partial refund — remainder stays in posted |
+| E | Invalid refunds — bad entry ID and over-amount, state must be unchanged |
+| F | Three partial refunds against the same original entry |
+
+To add a new scenario, define a function in `runner.py` and call it from `__main__`. Use `_run_expect_error` for commands that should fail, and parse entry IDs from `post` output with the returned dict:
+
+```python
+entries = post("my-account", 100.00)   # returns {"debit": "...", "credit": "..."}
+refund("my-account", 40.00, entries["debit"])
 ```
 
 ## Persistence

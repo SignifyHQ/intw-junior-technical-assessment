@@ -3,6 +3,18 @@ import { store } from "./store.js";
 import { AccountType, EntryDirection } from "./types.js";
 import type { Account, Book, Entry } from "./types.js";
 
+// ── Currency helpers ─────────────────────────────────────────────
+
+/** Convert a dollar string or float to an integer cent value. */
+export function toCents(dollars: number): number {
+  return Math.round(dollars * 100);
+}
+
+/** Convert an integer cent value back to a display dollar string. */
+export function toDollars(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
 // ── Account helpers ──────────────────────────────────────────────
 
 export function createAccount(name: string, type: AccountType): Account {
@@ -49,6 +61,8 @@ export function createEntryPair(
   debitBookId: string,
   creditBookId: string,
   amount: number,
+  refundId?: string,
+  refundOf?: string,
 ): [Entry, Entry] {
   if (amount <= 0) throw new Error("Entry amount must be positive");
 
@@ -63,6 +77,8 @@ export function createEntryPair(
     bookId: debitBookId,
     correspondingEntryId: creditId,
     createdAt: now,
+    ...(refundId !== undefined && { refundId }),
+    ...(refundOf !== undefined && { refundOf }),
   };
 
   const credit: Entry = {
@@ -72,6 +88,8 @@ export function createEntryPair(
     bookId: creditBookId,
     correspondingEntryId: debitId,
     createdAt: now,
+    ...(refundId !== undefined && { refundId }),
+    ...(refundOf !== undefined && { refundOf }),
   };
 
   store.entries.set(debitId, debit);

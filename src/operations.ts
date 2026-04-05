@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { AccountType } from "./types.js";
 import type { Entry } from "./types.js";
 import {
@@ -7,6 +8,7 @@ import {
   getBookBalance,
   createEntryPair,
 } from "./ledger.js";
+import { store } from "./store.js";
 
 function getCashBookId(): string {
   return ensureControllerAccount().cashBook.id;
@@ -107,4 +109,41 @@ export function clearAmount(
   }
 
   return createEntryPair(getCashBookId(), postedBook.id, amount);
+}
+
+/**
+ * Refund a posted charge: returns a previously settled amount from the
+ * charge account's posted book back to cash. Supports full and partial
+ * refunds against the same original entry.
+ *
+ * originalEntryId must be the debit entry from a prior postCharge call
+ * on this account's posted book — this link is stored on both new entries
+ * as `refundOf` for audit purposes. A shared `refundId` groups the pair.
+ *
+ * Dual entries: debit cash, credit posted.
+ */
+export function refundPostedCharge(
+  chargeAccountId: string,
+  amount: number,
+  originalEntryId: string,
+): [Entry, Entry] {
+  requireChargeAccount(chargeAccountId);
+  const postedBook = getBookByName(chargeAccountId, "posted");
+
+  const originalEntry = store.entries.get(originalEntryId);
+  if (!originalEntry || originalEntry.bookId !== postedBook.id) {
+    throw new Error(
+      `Entry ${originalEntryId} not found in posted book of account ${chargeAccountId}`,
+    );
+  }
+
+  const postedBalance = getBookBalance(postedBook.id);
+  if (postedBalance < amount) {
+    throw new Error(
+      `Insufficient posted balance: have ${postedBalance}, need ${amount}`,
+    );
+  }
+
+  const refundId = randomUUID();
+  return createEntryPair(getCashBookId(), postedBook.id, amount, refundId, originalEntryId);
 }
